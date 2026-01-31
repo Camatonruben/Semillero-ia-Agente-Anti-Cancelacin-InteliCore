@@ -1,23 +1,55 @@
-# Semillero-ia-Agente-Anti-Cancelacin-InteliCore
-Este proyecto implementa un Agente de Retención diseñado para un ISP (Proveedor de Internet). El agente utiliza procesamiento de lenguaje natural (NLP) y lógica basada en datos para detectar intenciones de cancelación y negociar con el cliente de forma autónoma.
+#Agente IA – Agente de Retención y Negociación Automatizada (Netlife)
 
-##Funcionalidades Principales
+## Integrantes
+* ALAMA BARZALLO JERSON BLADIMIR
+* CAMATON CORONEL RUBEN ANDRES
+* MOREIRA MUYULEMA KAROL DENISSE
 
-1.  Proactividad:Analiza datos simulados del CRM (fallas, facturación) antes de iniciar la conversación.
-2.  Análisis de Sentimiento:Detecta frustración o ira utilizando TextBlob para priorizar la atención.
-3.  Lógica Difusa (Fuzzy Logic):Entiende inputs con errores ortográficos (ej: "kiero canselar").
-4.  Escalera de Retención:Implementa una estrategia de negociación de dos niveles (Oferta Estándar -> Oferta Supervisor).
-5.  Manejo de Estados:Capaz de diferenciar entre soporte técnico, consultas de facturación y solicitudes de baja.
+---
 
-##Estructura del Proyecto
+## Descripción del Agente
+Este proyecto consiste en un Agente Inteligente de Retención diseñado específicamente para el sector de proveedores de internet (ISP). Su objetivo principal es reducir la tasa de cancelación (Churn Rate) automatizando la negociación con clientes en riesgo.
 
-- src/main.py: Código principal y bucle de ejecución.
-- src/config/reglas.py: Base de conocimiento, argumentos de venta y catálogo de ofertas.
-- requirements.txt: Librerías necesarias.
+A diferencia de un chatbot convencional, este agente utiliza Lógica Difusa (Fuzzy Logic) y Análisis de Sentimiento para detectar no solo qué dice el cliente, sino cómo se siente. Implementa una estrategia de negociación escalonada (Oferta Estándar → Oferta de Supervisor) para maximizar la retención cuidando la rentabilidad de la empresa.
 
-## 🛠️ Instalación y Uso
+---
 
-1. Clonar el repositorio.
-2. Instalar dependencias:
+## ¿Qué hace el agente? (Funcionalidades)
+
+### 1. Detección Proactiva de Riesgo
+El agente no espera a que el cliente se queje. Al iniciar la sesión, analiza los datos simulados del CRM (fallas técnicas recientes, intermitencia, reclamos de facturación) y se anticipa al problema antes de que el usuario escriba.
+
+### 2. Análisis de Sentimiento y NLP
+Utiliza la librería TextBlob para medir la polaridad emocional del cliente.
+* Si detecta Ira/Frustración (score < -0.3), activa inmediatamente el protocolo de contención.
+* Si el cliente escribe con errores (ej: kiero canselar por fayas), el sistema de Lógica Difusa entiende la intención perfectamente.
+
+### 3. Estrategia de Negociación Escalonada
+El agente posee una "Escalera de Retención" para negociar beneficios:
+* Nivel 1 (Estándar):Ofrece soluciones operativas o descuentos leves.
+* Nivel 2 (Supervisor):Si el cliente rechaza la primera oferta, el agente "solicita autorización" y lanza una oferta final agresiva (ej: 25% descuento o Igualación de Precios de competencia).
+
+### 4. Gestión de Intenciones Específicas
+* Competencia:Contra-argumenta comparando servicios (ej: Fibra vs Cobre) y ofrece igualación de precios.
+* Soporte Técnico:Si el cliente solicita explícitamente ayuda técnica, el agente genera un ticket y deriva a un humano (evita retener innecesariamente).
+* Facturación:Provee enlaces directos para consultas operativas, filtrando llamadas innecesarias.
+
+---
+
+## Tecnologías Utilizadas
+* Python 3.12+ (Lógica principal)
+* TextBlob (Procesamiento de Lenguaje Natural)
+* Difflib (Coincidencia de patrones y corrección de errores)
+* NLTK (Tokenización de texto)
+
+## Instrucciones de Ejecución
+
+Para probar el agente en tu máquina local, sigue estos pasos:
+
+1. Clonar el repositorio y entrar a la carpeta:
    ```bash
+   git clone [TU_LINK_DE_GITHUB_AQUI]
+   cd nombre-del-repo
    pip install -r requirements.txt
+   cd src
+   python main.py
