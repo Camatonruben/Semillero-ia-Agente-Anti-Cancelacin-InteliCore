@@ -4,12 +4,16 @@ import difflib
 from textblob import TextBlob
 import nltk
 
-# Importamos la configuración desde la carpeta config
+# Importamos la configuración. 
+# El try/except permite que funcione si corres desde 'src' o desde la carpeta principal.
 try:
     from config.reglas import BASE_CONOCIMIENTO
 except ImportError:
-    # Parche por si se ejecuta el archivo directamente desde src/
-    from reglas import BASE_CONOCIMIENTO
+    try:
+        from reglas import BASE_CONOCIMIENTO
+    except ImportError:
+        print("❌ ERROR CRÍTICO: No se encuentra el archivo 'reglas.py' en la carpeta config.")
+        sys.exit()
 
 # Descarga necesaria para análisis de texto
 try:
@@ -17,7 +21,7 @@ try:
 except LookupError:
     nltk.download('punkt')
 
-# --- FUNCIONES DE NLP ---
+# --- FUNCIONES DE NLP (Procesamiento de Lenguaje) ---
 def es_texto_similar(texto_usuario, lista_palabras_clave, umbral=0.8):
     palabras_usuario = texto_usuario.lower().split()
     for palabra in palabras_usuario:
@@ -51,7 +55,7 @@ def es_solicitud_baja(texto):
     palabras_peligro = ["cancelar", "baja", "cortar", "anular", "retirar", "irme", "eliminar", "renunciar"]
     return es_texto_similar(texto, palabras_peligro, 0.8) 
 
-# --- CLASE DEL AGENTE ---
+# --- CLASE DEL AGENTE (Cerebro) ---
 class AgenteNetlife:
     def __init__(self, datos_cliente):
         self.datos_cliente = datos_cliente
@@ -91,49 +95,68 @@ class AgenteNetlife:
         self.datos_sesion['sentimiento_acumulado'].append(score)
         texto_lower = input_usuario.lower()
         
+        # --- FASE 0: MONITOREO ---
         if not self.retencion_activa:
             intencion = detectar_intencion(input_usuario)
             es_baja = es_solicitud_baja(input_usuario)
             activar_por_datos = (intencion == self.datos_sesion['motivo_detectado'])
             
-            # Consultas operativas
+            # 1. CONSULTAS OPERATIVAS
             if "revisar" in texto_lower or "ver" in texto_lower or "factura" in texto_lower:
                 if "factura" in texto_lower or "costo" in texto_lower:
                     return "✅ Entendido. Puedes descargar tu factura detallada ingresando a: www.netlife.ec/mi-cuenta. ¿Necesitas ayuda con algo más?"
-            
-            # Derivación Soporte
+
+            # 2. DERIVACIÓN A SOPORTE
             keywords_soporte = ["soporte", "tecnico", "técnico", "ayuda", "revisen", "arreglen", "vengan", "visita"]
             if any(k in texto_lower for k in keywords_soporte) and not es_baja:
                  self.datos_sesion['decision_final'] = "DERIVADO_A_SOPORTE"
                  return "✅ Entendido. He generado el Ticket #INC-2026. 🛠️\nEstoy transfiriendo tu caso inmediatamente a un especialista técnico humano. ¡Gracias!"
 
-            # Despedida
+            # 3. DESPEDIDA
             keywords_adios = ["nada", "gracias", "chao", "adios", "ninguna", "todo bien", "no", "listo"]
             if es_texto_similar(input_usuario, keywords_adios, 0.8):
                 self.datos_sesion['decision_final'] = "CONSULTA_RESUELTA"
                 return "¡Me alegra haberte ayudado! ¡Que tengas un excelente día! 👋"
 
-            if es_baja or sentimiento == "Enojado/Frustrado" or activar_por_datos:
+            # 4. GATILLOS DE RETENCIÓN (Ahora incluye COMPETENCIA)
+            if es_baja or sentimiento == "Enojado/Frustrado" or activar_por_datos or intencion == "competencia":
                 self.retencion_activa = True
+                
+                if not self.datos_sesion['motivo_detectado']:
+                    self.datos_sesion['motivo_detectado'] = intencion
+
                 motivo = self.datos_sesion['motivo_detectado']
+                
+                # RESPUESTAS DE ACTIVACIÓN PROACTIVA O REACTIVA
                 if motivo == "tecnico":
-                    fallas = self.datos_cliente['fallas_internet']
+                    fallas = self.datos_cliente.get('fallas_internet', 0)
                     oferta = BASE_CONOCIMIENTO["ofertas_escalonadas"]["tecnico"][0]
                     self.datos_sesion['oferta_presentada'] = oferta
                     self.datos_sesion['nivel_oferta'] = 1
                     return f"Entiendo tu molestia. El sistema reporta {fallas} fallas recientes. 😟\nQueremos solucionarlo YA: >> {oferta} <<\n¿Nos permites realizar esta corrección?"
+                
                 elif motivo == "precio":
                     oferta = BASE_CONOCIMIENTO["ofertas_escalonadas"]["precio"][0]
                     self.datos_sesion['oferta_presentada'] = oferta
                     self.datos_sesion['nivel_oferta'] = 1
                     return f"Entiendo. Veo tus reportes de facturación. Te ofrezco: >> {oferta} << ¿Te gustaría mantener el servicio con este beneficio?"
+                
+                elif motivo == "competencia":
+                    argumento = BASE_CONOCIMIENTO["argumentos_valor"]["competencia"]
+                    oferta = BASE_CONOCIMIENTO["ofertas_escalonadas"]["competencia"][0]
+                    self.datos_sesion['oferta_presentada'] = oferta
+                    self.datos_sesion['nivel_oferta'] = 1
+                    return f"{argumento}\n\nPara demostrarte que somos mejores, te ofrezco: >> {oferta} <<\n¿Te parece bien?"
+
                 else:
                     return "He detectado tu intención de cancelar. Lamento escuchar eso. ¿El motivo es Precio, Fallas Técnicas o Competencia?"
 
+            # Respuestas normales
             if intencion == "tecnico": return "¿Deseas soporte técnico o estás pensando en cancelar?"
             elif intencion == "precio": return "¿Deseas revisar tu factura o estás considerando la baja?"
             else: return f"Hola {self.cliente}, ¿En qué puedo ayudarte hoy?"
 
+        # --- FASE 1: RETENCIÓN ---
         else:
             if self.datos_sesion['nivel_oferta'] == 0:
                 intencion = detectar_intencion(input_usuario)
@@ -185,7 +208,7 @@ class AgenteNetlife:
         print(f"► RESULTADO: [{self.datos_sesion['decision_final']}]")
         print("█"*60)
 
-# --- EJECUCIÓN PRINCIPAL ---
+# --- EJECUCIÓN PRINCIPAL (ESTO ES LO QUE TE FALTABA) ---
 if __name__ == "__main__":
     print("🛠️ CONFIGURACIÓN DEL ESCENARIO DE PRUEBA 🛠️")
     print("Ingrese los datos del cliente para simular la conexión al CRM:")
@@ -210,6 +233,7 @@ if __name__ == "__main__":
         
         bot = AgenteNetlife(datos_dinamicos)
 
+        # Saludo inteligente inicial
         if bot.datos_sesion['motivo_detectado'] == 'tecnico':
             print(f"\n🤖 Agente: Hola {nombre_input}. El sistema me alerta de inconvenientes técnicos. ¿Es por eso que nos contactas?")
         elif bot.datos_sesion['motivo_detectado'] == 'precio':
